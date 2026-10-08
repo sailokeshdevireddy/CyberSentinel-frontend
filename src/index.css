@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Dark-first enterprise palette */
+  --bg-primary: #121418;
+  --bg-secondary: #1a1d24;
+  --bg-canvas: #0b0d10;
+  
+  --border-color: #2a2e37;
+  --hover-color: #252a32;
+  --active-bg: #1f2937; /* blue-gray for active nav */
+  --active-color: #60a5fa; /* subtle blue */
+  
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  
+  --brand-color: #3b82f6; /* Enterprise blue */
+  --brand-hover: #2563eb;
+  
+  /* Status / Severity Colors */
+  --status-critical: #ef4444; /* red */
+  --status-high: #f97316;    /* orange */
+  --status-medium: #eab308;  /* yellow */
+  --status-low: #3b82f6;     /* blue */
+  --status-success: #10b981; /* green */
+}
+
+[data-theme='light'] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-canvas: #f3f4f6;
+  --border-color: #e5e7eb;
+  --hover-color: #f3f4f6;
+  --active-bg: #dbeafe;
+  --active-color: #1d4ed8;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-canvas: #f3f4f6;
+    --border-color: #e5e7eb;
+    --hover-color: #f3f4f6;
+    --active-bg: #dbeafe;
+    --active-color: #1d4ed8;
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-muted: #6b7280;
+  }
+}
+
+body.dense-layout * {
+  /* Reduce padding/margin scale */
+}
+body.dense-layout .card {
+  padding: 12px;
+}
+body.dense-layout .page-container,
+body.dense-layout .settings-page {
+  padding: 12px;
+}
+body.dense-layout .settings-grid {
+  gap: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Base Form Elements */
+button {
+  font-family: inherit;
+}
+
+/* Utilities */
+.page-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+}
+
+/* UI Primitives */
+.card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background-color: var(--brand-color);
+  color: #fff;
+}
+.btn-primary:hover {
+  background-color: var(--brand-hover);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+.btn-secondary:hover {
+  background-color: var(--hover-color);
+}

@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { getThreats, getThreatById } from '../services/threatService';
-import { Loader, X, Search } from 'lucide-react';
+import { Search, X, AlertTriangle, Clock, Layers } from 'lucide-react';
+import Spinner from '../components/ui/Spinner';
+import StatusBadge from '../components/ui/StatusBadge';
+import EmptyState from '../components/ui/EmptyState';
+import ErrorState from '../components/ui/ErrorState';
+
+const SeverityBadge = ({ severity }) => {
+  const sevKey = (severity || 'neutral').toLowerCase();
+  return <span className={`badge badge-${sevKey}`}>{severity || 'UNKNOWN'}</span>;
+};
 
 const Threats = () => {
   const [threats, setThreats] = useState([]);
@@ -36,28 +45,53 @@ const Threats = () => {
   };
 
   return (
-    <div className="page-wrapper" style={{ padding: '20px' }}>
-      <div className="page-header" style={{ marginBottom: '20px' }}>
-        <h1 className="page-title">Threat Intelligence</h1>
-        <p className="page-subtitle text-muted">Identified threat actors and active threat campaigns.</p>
+    <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 className="page-title">Threat Intelligence</h1>
+          <p className="page-subtitle">Aggregated threat vectors, correlation patterns, and automated detection campaigns</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--brand-color)' }}></span>
+          <span>{threats.length} correlated threats</span>
+        </div>
       </div>
 
-      <div className="card" style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-        <div className="table-toolbar" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <div className="search-bar" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', flex: 1 }}>
-            <Search size={18} className="text-muted" style={{ marginRight: '8px' }} />
+      <div className="card">
+        {/* Table Toolbar */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            background: 'var(--bg-primary)', 
+            padding: '8px 14px', 
+            borderRadius: 'var(--radius-md)', 
+            border: '1px solid var(--border-color)', 
+            flex: 1,
+            minWidth: '240px'
+          }}>
+            <Search size={16} className="text-muted" style={{ marginRight: '10px', flexShrink: 0 }} />
             <input 
               type="text" 
-              placeholder="Search by threat type..." 
+              placeholder="Search by threat type or signature..." 
               value={filters.searchTerm}
               onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%' }}
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                color: 'var(--text-primary)', 
+                outline: 'none', 
+                width: '100%',
+                fontSize: '0.875rem'
+              }}
             />
           </div>
+
           <select 
             value={filters.severity} 
             onChange={(e) => setFilters({...filters, severity: e.target.value})}
-            style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+            className="form-control"
+            style={{ width: '160px' }}
           >
             <option value="ALL">All Severities</option>
             <option value="CRITICAL">Critical</option>
@@ -65,10 +99,12 @@ const Threats = () => {
             <option value="MEDIUM">Medium</option>
             <option value="LOW">Low</option>
           </select>
+
           <select 
             value={filters.status} 
             onChange={(e) => setFilters({...filters, status: e.target.value})}
-            style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+            className="form-control"
+            style={{ width: '160px' }}
           >
             <option value="ALL">All Statuses</option>
             <option value="OPEN">Open</option>
@@ -79,33 +115,69 @@ const Threats = () => {
         </div>
         
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><Loader className="spin" /></div>
+          <Spinner message="Analyzing threat intelligence..." />
         ) : error ? (
-          <div style={{ color: 'var(--status-critical)', padding: '20px', textAlign: 'center' }}>{error}</div>
+          <ErrorState message={error} onRetry={() => setFilters({ ...filters })} />
         ) : threats.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No threats found matching criteria.</div>
+          <EmptyState 
+            title="No threats detected" 
+            message="No active threat vectors matching the specified filters were found in your environment." 
+          />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <th style={{ padding: '12px' }}>Type</th>
-                  <th style={{ padding: '12px' }}>Severity</th>
-                  <th style={{ padding: '12px' }}>Risk Score</th>
-                  <th style={{ padding: '12px' }}>Status</th>
-                  <th style={{ padding: '12px' }}>Created At</th>
-                  <th style={{ padding: '12px' }}>Events</th>
+                <tr>
+                  <th>Threat Type</th>
+                  <th>Severity</th>
+                  <th>Risk Score</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                  <th>Related Telemetries</th>
                 </tr>
               </thead>
               <tbody>
                 {threats.map(threat => (
-                  <tr key={threat.id} onClick={() => handleSelectThreat(threat)} style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.2s' }} className="hover-row">
-                    <td style={{ padding: '12px' }}><strong>{threat.type}</strong></td>
-                    <td style={{ padding: '12px' }}><span style={{ color: 'var(--status-' + threat.severity?.toLowerCase() + ')' }}>{threat.severity}</span></td>
-                    <td style={{ padding: '12px' }}>{threat.riskScore === null ? 'N/A' : threat.riskScore}</td>
-                    <td style={{ padding: '12px' }}>{threat.status}</td>
-                    <td style={{ padding: '12px' }}>{new Date(threat.createdAt).toLocaleString()}</td>
-                    <td style={{ padding: '12px' }}>{threat.relatedEventIds?.length || 0}</td>
+                  <tr 
+                    key={threat.id} 
+                    onClick={() => handleSelectThreat(threat)} 
+                    className="hover-row"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <AlertTriangle size={15} style={{ color: 'var(--status-high)', flexShrink: 0 }} />
+                        <strong style={{ fontSize: '0.85rem' }}>{threat.type}</strong>
+                      </div>
+                    </td>
+                    <td><SeverityBadge severity={threat.severity} /></td>
+                    <td>
+                      <span style={{ 
+                        fontFamily: 'var(--font-mono, monospace)', 
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        color: threat.riskScore >= 70 ? 'var(--status-critical)' : 'var(--text-primary)' 
+                      }}>
+                        {threat.riskScore === null || threat.riskScore === undefined ? 'N/A' : threat.riskScore}
+                      </span>
+                    </td>
+                    <td><StatusBadge status={threat.status} /></td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      <Clock size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+                      {new Date(threat.createdAt).toLocaleString()}
+                    </td>
+                    <td>
+                      <span style={{ 
+                        padding: '2px 8px', 
+                        borderRadius: 'var(--radius-full)', 
+                        background: 'var(--bg-primary)', 
+                        border: '1px solid var(--border-color)',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-secondary)'
+                      }}>
+                        {threat.relatedEventIds?.length || 0} events
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -116,37 +188,131 @@ const Threats = () => {
 
       {/* Details Modal */}
       {selectedThreat && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--bg-secondary)', padding: '24px', borderRadius: '8px', width: '90%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border-color)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2>Threat Details</h2>
-              <button onClick={() => setSelectedThreat(null)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X /></button>
+        <div className="modal-overlay" onClick={() => setSelectedThreat(null)}>
+          <div 
+            className="modal-dialog" 
+            style={{ width: '100%', maxWidth: '720px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ 
+              padding: '18px 24px', 
+              borderBottom: '1px solid var(--border-color)', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              backgroundColor: 'var(--bg-primary)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: 'var(--radius-sm)', background: 'var(--status-high-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--status-high)' }}>
+                  <AlertTriangle size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Threat Analysis</h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    ID: {selectedThreat.id}
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedThreat(null)} 
+                className="icon-btn"
+                style={{ width: '30px', height: '30px' }}
+                aria-label="Close dialog"
+              >
+                <X size={16} />
+              </button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-              <div><strong className="text-muted">ID:</strong> <div>{selectedThreat.id}</div></div>
-              <div><strong className="text-muted">Type:</strong> <div>{selectedThreat.type}</div></div>
-              <div><strong className="text-muted">App ID:</strong> <div>{selectedThreat.applicationId}</div></div>
-              <div><strong className="text-muted">Severity:</strong> <div><span style={{ color: 'var(--status-' + selectedThreat.severity?.toLowerCase() + ')' }}>{selectedThreat.severity}</span></div></div>
-              <div><strong className="text-muted">Risk Score:</strong> <div>{selectedThreat.riskScore === null ? 'Not Evaluated' : selectedThreat.riskScore}</div></div>
-              <div><strong className="text-muted">Status:</strong> <div>{selectedThreat.status}</div></div>
-              <div><strong className="text-muted">Created At:</strong> <div>{new Date(selectedThreat.createdAt).toLocaleString()}</div></div>
-              <div><strong className="text-muted">Updated At:</strong> <div>{new Date(selectedThreat.updatedAt).toLocaleString()}</div></div>
-            </div>
+            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                gap: '14px',
+                padding: '16px',
+                backgroundColor: 'var(--bg-primary)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)'
+              }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Threat Classification</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem', marginTop: '2px' }}>{selectedThreat.type}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Application Scope</span>
+                  <div style={{ fontSize: '0.85rem', marginTop: '2px', fontFamily: 'var(--font-mono, monospace)' }}>{selectedThreat.applicationId}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Severity & Risk</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                    <SeverityBadge severity={selectedThreat.severity} />
+                    <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, fontSize: '0.85rem' }}>
+                      Score: {selectedThreat.riskScore === null || selectedThreat.riskScore === undefined ? 'N/A' : selectedThreat.riskScore}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Lifecycle Status</span>
+                  <div style={{ marginTop: '2px' }}><StatusBadge status={selectedThreat.status} /></div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>First Detected</span>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{new Date(selectedThreat.createdAt).toLocaleString()}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Last Updated</span>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{new Date(selectedThreat.updatedAt).toLocaleString()}</div>
+                </div>
+              </div>
 
-            <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px' }}>
-              <h3 style={{ marginBottom: '12px' }}>Related Events ({selectedThreat.relatedEventIds?.length || 0})</h3>
-              {selectedThreat.resolvedEvents && selectedThreat.resolvedEvents.length > 0 ? (
-                <ul style={{ paddingLeft: '20px' }}>
-                  {selectedThreat.resolvedEvents.map(evt => (
-                    <li key={evt.id} style={{ marginBottom: '8px' }}>
-                      <strong>{evt.eventType}</strong> - {evt.userIdentifier} - {new Date(evt.occurredAt).toLocaleString()}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-muted">No related events found or loaded.</div>
-              )}
+              {/* Related Events Section */}
+              <div style={{ 
+                background: 'var(--bg-primary)', 
+                padding: '16px', 
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)' 
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Layers size={15} style={{ color: 'var(--brand-color)' }} />
+                    Correlated Security Events ({selectedThreat.relatedEventIds?.length || 0})
+                  </h4>
+                </div>
+
+                {selectedThreat.resolvedEvents && selectedThreat.resolvedEvents.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {selectedThreat.resolvedEvents.map(evt => (
+                      <div 
+                        key={evt.id} 
+                        style={{ 
+                          padding: '10px 14px', 
+                          borderRadius: 'var(--radius-sm)', 
+                          backgroundColor: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-color)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 600, fontSize: '0.825rem' }}>
+                            {evt.eventType}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>• {evt.userIdentifier}</span>
+                        </div>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                          {new Date(evt.occurredAt).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    No correlated raw events loaded.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

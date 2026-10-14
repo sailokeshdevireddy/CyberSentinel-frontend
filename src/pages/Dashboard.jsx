@@ -11,6 +11,35 @@ import EmptyState from '../components/ui/EmptyState';
 import { Shield, ShieldAlert, Target, Activity, AlertTriangle, BarChart2 } from 'lucide-react';
 import './Dashboard.css';
 
+const DashboardSkeleton = () => (
+  <div className="dashboard-container">
+    <div className="dashboard-header">
+      <div className="dashboard-title-area">
+        <div className="skeleton" style={{ width: '180px', height: '28px', marginBottom: '6px' }}></div>
+        <div className="skeleton" style={{ width: '240px', height: '16px' }}></div>
+      </div>
+    </div>
+
+    <div className="metrics-grid">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="card metric-card">
+          <div className="skeleton" style={{ width: '60%', height: '14px', marginBottom: '12px' }}></div>
+          <div className="skeleton" style={{ width: '40%', height: '32px' }}></div>
+        </div>
+      ))}
+    </div>
+
+    <div className="charts-grid">
+      <div className="card" style={{ height: '340px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Spinner size="medium" message="Loading severity telemetry..." />
+      </div>
+      <div className="card" style={{ height: '340px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Spinner size="medium" message="Loading event trend data..." />
+      </div>
+    </div>
+  </div>
+);
+
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +71,7 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  if (loading) return <div className="dashboard-loading"><Spinner size="large" /></div>;
+  if (loading) return <DashboardSkeleton />;
   if (error) return <div className="dashboard-error"><ErrorState message={error} onRetry={() => window.location.reload()} /></div>;
   if (!data) return <div className="dashboard-empty"><EmptyState title="No Data" message="No dashboard data available for your organization." /></div>;
 
@@ -51,8 +80,10 @@ const Dashboard = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1 className="dashboard-title">Overview</h1>
-        <p className="dashboard-subtitle">Organization Security Posture</p>
+        <div className="dashboard-title-area">
+          <h1 className="dashboard-title">Operations Overview</h1>
+          <p className="dashboard-subtitle">Real-time security posture and incident landscape</p>
+        </div>
       </div>
 
       <div className="metrics-grid">

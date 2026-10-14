@@ -3,18 +3,40 @@ import Card from '../ui/Card';
 import StatusBadge from '../ui/StatusBadge';
 
 const SeverityBadge = ({ severity }) => {
-  const colors = {
-    LOW: 'badge-success',
-    MEDIUM: 'badge-warning',
-    HIGH: 'badge-danger',
-    CRITICAL: 'badge-critical'
-  };
-  return <span className={`badge ${colors[severity] || 'badge-neutral'}`}>{severity}</span>;
+  const sevKey = (severity || 'neutral').toLowerCase();
+  return <span className={`badge badge-${sevKey}`}>{severity || 'UNKNOWN'}</span>;
 };
 
-export const RecentEventsTable = ({ events }) => {
+const RiskScoreBadge = ({ score }) => {
+  if (score === null || score === undefined) {
+    return <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>N/A</span>;
+  }
+  
+  let color = 'var(--text-secondary)';
+  if (score >= 80) color = 'var(--status-critical)';
+  else if (score >= 60) color = 'var(--status-high)';
+  else if (score >= 40) color = 'var(--status-medium)';
+  else color = 'var(--status-low)';
+
   return (
-    <Card title="Recent Security Events" className="table-card">
+    <span style={{ 
+      fontWeight: 700, 
+      fontFamily: 'var(--font-mono, monospace)', 
+      color,
+      fontSize: '0.875rem' 
+    }}>
+      {score}
+    </span>
+  );
+};
+
+export const RecentEventsTable = ({ events = [] }) => {
+  return (
+    <Card 
+      title="Recent Security Events" 
+      subtitle="Latest raw security telemetries received"
+      className="table-card"
+    >
       <div className="table-responsive">
         <table className="data-table">
           <thead>
@@ -28,14 +50,18 @@ export const RecentEventsTable = ({ events }) => {
           </thead>
           <tbody>
             {events.length === 0 ? (
-              <tr><td colSpan="5" className="text-center empty-cell">No recent events</td></tr>
+              <tr><td colSpan="5" className="text-center empty-cell">No recent events detected</td></tr>
             ) : (
               events.map(event => (
-                <tr key={event.id}>
-                  <td>{new Date(event.occurredAt).toLocaleTimeString()}</td>
-                  <td className="font-medium">{event.eventType.replace(/_/g, ' ')}</td>
+                <tr key={event.id} className="hover-row">
+                  <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                    {new Date(event.occurredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </td>
+                  <td className="font-medium">
+                    <code>{event.eventType ? event.eventType.replace(/_/g, ' ') : 'EVENT'}</code>
+                  </td>
                   <td><SeverityBadge severity={event.severity} /></td>
-                  <td>{event.riskScore !== null ? event.riskScore : 'N/A'}</td>
+                  <td><RiskScoreBadge score={event.riskScore} /></td>
                   <td><StatusBadge status={event.status} /></td>
                 </tr>
               ))
@@ -47,9 +73,13 @@ export const RecentEventsTable = ({ events }) => {
   );
 };
 
-export const RecentThreatsTable = ({ threats }) => {
+export const RecentThreatsTable = ({ threats = [] }) => {
   return (
-    <Card title="Active Threats" className="table-card">
+    <Card 
+      title="Active Threats" 
+      subtitle="Correlated attack vectors requiring attention"
+      className="table-card"
+    >
       <div className="table-responsive">
         <table className="data-table">
           <thead>
@@ -63,14 +93,20 @@ export const RecentThreatsTable = ({ threats }) => {
           </thead>
           <tbody>
             {threats.length === 0 ? (
-              <tr><td colSpan="5" className="text-center empty-cell">No active threats</td></tr>
+              <tr><td colSpan="5" className="text-center empty-cell">No active threats detected</td></tr>
             ) : (
               threats.map(threat => (
-                <tr key={threat.id}>
-                  <td className="font-medium">{threat.type.replace(/_/g, ' ')}</td>
+                <tr key={threat.id} className="hover-row">
+                  <td className="font-medium">
+                    <code>{threat.type ? threat.type.replace(/_/g, ' ') : 'THREAT'}</code>
+                  </td>
                   <td><SeverityBadge severity={threat.severity} /></td>
-                  <td>{threat.riskScore}</td>
-                  <td>{threat.relatedEventIds?.length || 0}</td>
+                  <td><RiskScoreBadge score={threat.riskScore} /></td>
+                  <td>
+                    <span className="count-pill">
+                      {threat.relatedEventIds?.length || 0} events
+                    </span>
+                  </td>
                   <td><StatusBadge status={threat.status} /></td>
                 </tr>
               ))
@@ -82,9 +118,13 @@ export const RecentThreatsTable = ({ threats }) => {
   );
 };
 
-export const RecentIncidentsTable = ({ incidents }) => {
+export const RecentIncidentsTable = ({ incidents = [] }) => {
   return (
-    <Card title="Recent Incidents" className="table-card">
+    <Card 
+      title="Recent Incidents" 
+      subtitle="Escalated security cases underway"
+      className="table-card"
+    >
       <div className="table-responsive">
         <table className="data-table">
           <thead>
@@ -98,14 +138,20 @@ export const RecentIncidentsTable = ({ incidents }) => {
           </thead>
           <tbody>
             {incidents.length === 0 ? (
-              <tr><td colSpan="5" className="text-center empty-cell">No recent incidents</td></tr>
+              <tr><td colSpan="5" className="text-center empty-cell">No recent incidents recorded</td></tr>
             ) : (
               incidents.map(incident => (
-                <tr key={incident.id}>
-                  <td className="font-medium">{incident.title}</td>
+                <tr key={incident.id} className="hover-row">
+                  <td className="font-medium">
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{incident.title}</span>
+                  </td>
                   <td><SeverityBadge severity={incident.severity} /></td>
-                  <td>{incident.riskScore}</td>
-                  <td>{incident.relatedThreatIds?.length || 0}</td>
+                  <td><RiskScoreBadge score={incident.riskScore} /></td>
+                  <td>
+                    <span className="count-pill">
+                      {incident.relatedThreatIds?.length || 0} threats
+                    </span>
+                  </td>
                   <td><StatusBadge status={incident.status} /></td>
                 </tr>
               ))

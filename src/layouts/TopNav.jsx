@@ -1,15 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Bell, User, Settings, LogOut, Check } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Bell, User, Settings, LogOut, Check, Menu, ShieldCheck } from 'lucide-react';
 import { getUser, logout } from '../services/authService';
 import { getNotifications, markAsRead, markAllAsRead } from '../services/notificationService';
 
-const TopNav = () => {
+const ROUTE_TITLES = {
+  '/dashboard': 'Operations Dashboard',
+  '/events': 'Security Events Monitoring',
+  '/threats': 'Threat Intelligence',
+  '/incidents': 'Incident Response',
+  '/applications': 'Protected Applications',
+  '/organizations': 'Organization Context',
+  '/audit-logs': 'Audit Trail & Compliance',
+  '/settings': 'System Settings'
+};
+
+const TopNav = ({ onMenuToggle }) => {
   const [user, setUser] = useState(getUser());
   const navigate = useNavigate();
+  const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const currentTitle = ROUTE_TITLES[location.pathname] || 'CyberSentinel';
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -52,52 +66,112 @@ const TopNav = () => {
     setShowNotifications(false);
   };
 
+  // Close notifications when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (showNotifications && !e.target.closest('.notification-container')) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [showNotifications]);
+
   return (
-    <header className="top-nav" style={{ position: 'relative' }}>
-      <div className="nav-left"></div>
-      <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        
-        {/* Notification Button */}
-        <div style={{ position: 'relative' }}>
+    <header className="top-nav">
+      <div className="nav-left">
+        <button 
+          className="mobile-hamburger-btn" 
+          onClick={onMenuToggle}
+          aria-label="Toggle navigation menu"
+        >
+          <Menu size={20} />
+        </button>
+
+        <div className="breadcrumb-wrapper">
+          <span className="breadcrumb-root">SOC</span>
+          <span className="breadcrumb-divider">/</span>
+          <span className="breadcrumb-current">{currentTitle}</span>
+        </div>
+      </div>
+
+      <div className="nav-right">
+        {/* Status Pill */}
+        <div className="system-status-pill">
+          <ShieldCheck size={14} className="status-icon" />
+          <span className="status-text">Defenses Active</span>
+        </div>
+
+        {/* Notification Button & Dropdown */}
+        <div className="notification-container" style={{ position: 'relative' }}>
           <button 
-            className="icon-btn" 
+            className={`icon-btn ${unreadCount > 0 ? 'has-badge' : ''}`} 
             aria-label="Notifications" 
-            onClick={() => setShowNotifications(!showNotifications)}
-            style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowNotifications(!showNotifications);
+            }}
           >
-            <Bell size={20} />
+            <Bell size={18} />
             {unreadCount > 0 && (
-              <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: 'var(--status-critical)', color: 'white', fontSize: '0.7rem', padding: '2px 5px', borderRadius: '50%', fontWeight: 'bold' }}>
-                {unreadCount}
+              <span className="notification-badge-count">
+                {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </button>
           
-          {/* Notification Dropdown */}
           {showNotifications && (
-            <div style={{ position: 'absolute', top: '100%', right: '0', marginTop: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', width: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', zIndex: 50, overflow: 'hidden' }}>
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ margin: 0 }}>Notifications</h4>
+            <div className="notification-dropdown">
+              <div className="notif-header">
+                <div className="notif-header-title">
+                  <h4>Notifications</h4>
+                  {unreadCount > 0 && (
+                    <span className="notif-unread-tag">{unreadCount} new</span>
+                  )}
+                </div>
                 {unreadCount > 0 && (
-                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: 'var(--brand-color)', cursor: 'pointer', fontSize: '0.85rem' }}>Mark all read</button>
+                  <button 
+                    onClick={handleMarkAllRead} 
+                    className="notif-mark-all-btn"
+                  >
+                    Mark all read
+                  </button>
                 )}
               </div>
-              <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+
+              <div className="notif-list">
                 {notifications.length === 0 ? (
-                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No notifications</div>
+                  <div className="notif-empty">
+                    <Bell size={32} style={{ opacity: 0.3, marginBottom: '8px' }} />
+                    <p>All caught up! No notifications.</p>
+                  </div>
                 ) : (
                   notifications.map(n => (
-                    <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', background: n.read ? 'transparent' : 'rgba(59, 130, 246, 0.1)', cursor: 'pointer' }} onClick={() => navigateToRelated(n)}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '0.9rem', color: n.read ? 'var(--text-primary)' : 'var(--active-color)' }}>{n.title}</strong>
+                    <div 
+                      key={n.id} 
+                      className={`notif-item ${n.read ? 'read' : 'unread'}`}
+                      onClick={() => navigateToRelated(n)}
+                    >
+                      <div className="notif-item-top">
+                        <span className="notif-item-title">{n.title}</span>
                         {!n.read && (
-                          <button onClick={(e) => { e.stopPropagation(); handleMarkRead(n.id); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} title="Mark as read">
-                            <Check size={14} />
+                          <button 
+                            className="notif-read-check"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleMarkRead(n.id); 
+                            }} 
+                            title="Mark as read"
+                            aria-label="Mark notification as read"
+                          >
+                            <Check size={13} />
                           </button>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{n.message}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(n.createdAt).toLocaleString()}</div>
+                      <p className="notif-item-message">{n.message}</p>
+                      <span className="notif-item-time">
+                        {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
                   ))
                 )}
@@ -106,22 +180,35 @@ const TopNav = () => {
           )}
         </div>
 
-        <button className="icon-btn" aria-label="Settings" onClick={() => navigate('/settings')} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
-          <Settings size={20} />
+        {/* Settings Shortcut */}
+        <button 
+          className="icon-btn" 
+          aria-label="Settings" 
+          onClick={() => navigate('/settings')}
+          title="Open Settings"
+        >
+          <Settings size={18} />
         </button>
         
-        <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div className="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--active-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <User size={18} />
+        {/* User Profile Pill */}
+        <div className="user-profile">
+          <div className="avatar">
+            <User size={16} />
           </div>
-          <div className="user-info" style={{ display: 'flex', flexDirection: 'column' }}>
-            <span className="user-name" style={{ fontSize: '0.9rem', fontWeight: 500 }}>{user?.name || 'Guest'}</span>
-            <span className="user-role" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user?.role || ''}</span>
+          <div className="user-info">
+            <span className="user-name">{user?.name || 'Guest User'}</span>
+            <span className="user-role">{user?.role ? user.role.replace(/_/g, ' ') : 'Security Analyst'}</span>
           </div>
         </div>
 
-        <button className="icon-btn" aria-label="Logout" onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'var(--status-critical)', cursor: 'pointer', marginLeft: '10px' }} title="Logout">
-          <LogOut size={20} />
+        {/* Logout Button */}
+        <button 
+          className="logout-btn" 
+          aria-label="Logout" 
+          onClick={handleLogout} 
+          title="Sign out of platform"
+        >
+          <LogOut size={16} />
         </button>
       </div>
     </header>

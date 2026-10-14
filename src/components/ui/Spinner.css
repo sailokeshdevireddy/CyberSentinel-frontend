@@ -1,21 +1,80 @@
 .spinner-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 40px;
+  padding: 32px;
+  gap: 12px;
 }
 
-.spinner {
+.spinner-radar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner-radar::before {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--brand-color);
+  animation: spin 0.9s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+}
+
+.spinner-core {
+  border-radius: 50%;
+  background-color: var(--brand-color);
+  opacity: 0.6;
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+/* Sizes */
+.spinner-small .spinner-radar {
+  width: 20px;
+  height: 20px;
+}
+.spinner-small .spinner-radar::before {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+.spinner-small .spinner-core {
+  width: 6px;
+  height: 6px;
+}
+
+.spinner-medium .spinner-radar {
   width: 32px;
   height: 32px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--brand-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+}
+.spinner-medium .spinner-radar::before {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+.spinner-medium .spinner-core {
+  width: 10px;
+  height: 10px;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.spinner-large .spinner-radar {
+  width: 48px;
+  height: 48px;
+}
+.spinner-large .spinner-radar::before {
+  width: 48px;
+  height: 48px;
+  border-width: 3px;
+}
+.spinner-large .spinner-core {
+  width: 14px;
+  height: 14px;
+}
+
+.spinner-message {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }

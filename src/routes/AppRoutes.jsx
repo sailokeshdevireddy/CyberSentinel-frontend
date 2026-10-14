@@ -1,42 +1,52 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import AppShell from '../layouts/AppShell';
+import Spinner from '../components/ui/Spinner';
 
-import LandingPage from '../pages/LandingPage';
-import Dashboard from '../pages/Dashboard';
-import SecurityEvents from '../pages/SecurityEvents';
-import Threats from '../pages/Threats';
-import Incidents from '../pages/Incidents';
-import Applications from '../pages/Applications';
-import Organizations from '../pages/Organizations';
-import AuditLogs from '../pages/AuditLogs';
-import Settings from '../pages/Settings';
-import Login from '../pages/Login';
-import Register from '../pages/Register';
+// Route-level code splitting for frontend performance
+const LandingPage = lazy(() => import('../pages/LandingPage'));
+const Dashboard = lazy(() => import('../pages/Dashboard'));
+const SecurityEvents = lazy(() => import('../pages/SecurityEvents'));
+const Threats = lazy(() => import('../pages/Threats'));
+const Incidents = lazy(() => import('../pages/Incidents'));
+const Applications = lazy(() => import('../pages/Applications'));
+const Organizations = lazy(() => import('../pages/Organizations'));
+const AuditLogs = lazy(() => import('../pages/AuditLogs'));
+const Settings = lazy(() => import('../pages/Settings'));
+const Login = lazy(() => import('../pages/Login'));
+const Register = lazy(() => import('../pages/Register'));
+
+const RouteSuspenseFallback = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', width: '100%' }}>
+    <Spinner />
+  </div>
+);
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+    <Suspense fallback={<RouteSuspenseFallback />}>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppShell />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/events" element={<SecurityEvents />} />
-          <Route path="/threats" element={<Threats />} />
-          <Route path="/incidents" element={<Incidents />} />
-          <Route path="/applications" element={<Applications />} />
-          <Route path="/organizations" element={<Organizations />} />
-          <Route path="/audit-logs" element={<AuditLogs />} />
-          <Route path="/settings" element={<Settings />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppShell />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/events" element={<SecurityEvents />} />
+            <Route path="/threats" element={<Threats />} />
+            <Route path="/incidents" element={<Incidents />} />
+            <Route path="/applications" element={<Applications />} />
+            <Route path="/organizations" element={<Organizations />} />
+            <Route path="/audit-logs" element={<AuditLogs />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 

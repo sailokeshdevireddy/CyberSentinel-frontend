@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { getEvents } from '../services/eventService';
 import { getRiskAssessment } from '../services/riskService';
-import { Search, Loader, X } from 'lucide-react';
+import { Search, X, Activity, ShieldAlert, User, Clock, AlertCircle } from 'lucide-react';
+import Spinner from '../components/ui/Spinner';
+import StatusBadge from '../components/ui/StatusBadge';
+import EmptyState from '../components/ui/EmptyState';
+import ErrorState from '../components/ui/ErrorState';
+
+const SeverityBadge = ({ severity }) => {
+  const sevKey = (severity || 'neutral').toLowerCase();
+  return <span className={`badge badge-${sevKey}`}>{severity || 'UNKNOWN'}</span>;
+};
 
 const SecurityEvents = () => {
   const [events, setEvents] = useState([]);
@@ -41,28 +50,53 @@ const SecurityEvents = () => {
   };
 
   return (
-    <div className="page-wrapper" style={{ padding: '20px' }}>
-      <div className="page-header" style={{ marginBottom: '20px' }}>
-        <h1 className="page-title">Security Events</h1>
-        <p className="page-subtitle text-muted">Monitor and analyze raw security events across your infrastructure.</p>
+    <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 className="page-title">Security Events</h1>
+          <p className="page-subtitle">Real-time telemetry ingestion, raw event logs, and automated risk scoring</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-success)' }}></span>
+          <span>{events.length} events matching filter</span>
+        </div>
       </div>
 
-      <div className="card" style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-        <div className="table-toolbar" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <div className="search-bar" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', flex: 1 }}>
-            <Search size={18} className="text-muted" style={{ marginRight: '8px' }} />
+      <div className="card">
+        {/* Table Toolbar */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            background: 'var(--bg-primary)', 
+            padding: '8px 14px', 
+            borderRadius: 'var(--radius-md)', 
+            border: '1px solid var(--border-color)', 
+            flex: 1,
+            minWidth: '240px'
+          }}>
+            <Search size={16} className="text-muted" style={{ marginRight: '10px', flexShrink: 0 }} />
             <input 
               type="text" 
-              placeholder="Search by type, user, IP, or app ID..." 
+              placeholder="Search by event type, user identifier, IP address, or app ID..." 
               value={filters.searchTerm}
               onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%' }}
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                color: 'var(--text-primary)', 
+                outline: 'none', 
+                width: '100%',
+                fontSize: '0.875rem'
+              }}
             />
           </div>
+
           <select 
             value={filters.severity} 
             onChange={(e) => setFilters({...filters, severity: e.target.value})}
-            style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+            className="form-control"
+            style={{ width: '160px' }}
           >
             <option value="ALL">All Severities</option>
             <option value="CRITICAL">Critical</option>
@@ -70,10 +104,12 @@ const SecurityEvents = () => {
             <option value="MEDIUM">Medium</option>
             <option value="LOW">Low</option>
           </select>
+
           <select 
             value={filters.status} 
             onChange={(e) => setFilters({...filters, status: e.target.value})}
-            style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+            className="form-control"
+            style={{ width: '160px' }}
           >
             <option value="ALL">All Statuses</option>
             <option value="RECEIVED">Received</option>
@@ -82,36 +118,63 @@ const SecurityEvents = () => {
         </div>
         
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><Loader className="spin" /></div>
+          <Spinner message="Ingesting security event feed..." />
         ) : error ? (
-          <div style={{ color: 'var(--status-critical)', padding: '20px', textAlign: 'center' }}>{error}</div>
+          <ErrorState message={error} onRetry={() => setFilters({ ...filters })} />
         ) : events.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No events found matching criteria.</div>
+          <EmptyState 
+            title="No events found" 
+            message="No security events match the current search filters and criteria." 
+          />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <th style={{ padding: '12px' }}>Event Type</th>
-                  <th style={{ padding: '12px' }}>Severity</th>
-                  <th style={{ padding: '12px' }}>User</th>
-                  <th style={{ padding: '12px' }}>IP / Device</th>
-                  <th style={{ padding: '12px' }}>Occurred At</th>
-                  <th style={{ padding: '12px' }}>Status</th>
+                <tr>
+                  <th>Event Type</th>
+                  <th>Severity</th>
+                  <th>User Identifier</th>
+                  <th>Network / Host</th>
+                  <th>Occurred At</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {events.map(event => (
-                  <tr key={event.id} onClick={() => handleSelectEvent(event)} style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.2s' }} className="hover-row">
-                    <td style={{ padding: '12px' }}><strong>{event.eventType}</strong></td>
-                    <td style={{ padding: '12px' }}><span style={{ color: 'var(--status-' + event.severity?.toLowerCase() + ')' }}>{event.severity}</span></td>
-                    <td style={{ padding: '12px' }}>{event.userIdentifier}</td>
-                    <td style={{ padding: '12px' }}>
-                      <div>{event.ipAddress}</div>
-                      <div className="text-muted" style={{ fontSize: '0.8rem' }}>{event.device}</div>
+                  <tr 
+                    key={event.id} 
+                    onClick={() => handleSelectEvent(event)} 
+                    className="hover-row"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Activity size={14} style={{ color: 'var(--brand-color)', flexShrink: 0 }} />
+                        <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.825rem' }}>
+                          {event.eventType}
+                        </strong>
+                      </div>
                     </td>
-                    <td style={{ padding: '12px' }}>{new Date(event.occurredAt).toLocaleString()}</td>
-                    <td style={{ padding: '12px' }}>{event.status}</td>
+                    <td><SeverityBadge severity={event.severity} /></td>
+                    <td style={{ fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <User size={13} style={{ color: 'var(--text-muted)' }} />
+                        <span>{event.userIdentifier}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                          {event.ipAddress}
+                        </span>
+                        <span className="text-muted" style={{ fontSize: '0.725rem' }}>{event.device}</span>
+                      </div>
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      <Clock size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+                      {new Date(event.occurredAt).toLocaleString()}
+                    </td>
+                    <td><StatusBadge status={event.status} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -120,54 +183,176 @@ const SecurityEvents = () => {
         )}
       </div>
 
-      {/* Details Modal */}
+      {/* Modern Event Details Modal */}
       {selectedEvent && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--bg-secondary)', padding: '24px', borderRadius: '8px', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border-color)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2>Event Details</h2>
-              <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X /></button>
+        <div className="modal-overlay" onClick={() => setSelectedEvent(null)}>
+          <div 
+            className="modal-dialog" 
+            style={{ width: '100%', maxWidth: '680px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ 
+              padding: '18px 24px', 
+              borderBottom: '1px solid var(--border-color)', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              backgroundColor: 'var(--bg-primary)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: 'var(--radius-sm)', background: 'var(--brand-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-color)' }}>
+                  <ShieldAlert size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Event Analysis</h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    ID: {selectedEvent.id}
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedEvent(null)} 
+                className="icon-btn"
+                style={{ width: '30px', height: '30px' }}
+                aria-label="Close dialog"
+              >
+                <X size={16} />
+              </button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-              <div><strong className="text-muted">ID:</strong> <div>{selectedEvent.id}</div></div>
-              <div><strong className="text-muted">Type:</strong> <div>{selectedEvent.eventType}</div></div>
-              <div><strong className="text-muted">User:</strong> <div>{selectedEvent.userIdentifier}</div></div>
-              <div><strong className="text-muted">App ID:</strong> <div>{selectedEvent.applicationId}</div></div>
-              <div><strong className="text-muted">Occurred At:</strong> <div>{new Date(selectedEvent.occurredAt).toLocaleString()}</div></div>
-              <div><strong className="text-muted">Received At:</strong> <div>{new Date(selectedEvent.receivedAt).toLocaleString()}</div></div>
-              <div><strong className="text-muted">IP Address:</strong> <div>{selectedEvent.ipAddress}</div></div>
-              <div><strong className="text-muted">Device:</strong> <div>{selectedEvent.device}</div></div>
-              <div><strong className="text-muted">Location:</strong> <div>{selectedEvent.location}</div></div>
-              <div><strong className="text-muted">Status:</strong> <div>{selectedEvent.status}</div></div>
-            </div>
-
-            <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
-              <h3 style={{ marginBottom: '12px' }}>Risk Information</h3>
-              <div style={{ display: 'flex', gap: '20px' }}>
-                <div><strong className="text-muted">Severity:</strong> <div><span style={{ color: 'var(--status-' + selectedEvent.severity?.toLowerCase() + ')' }}>{selectedEvent.severity}</span></div></div>
-                <div><strong className="text-muted">Risk Score:</strong> <div>{selectedEvent.riskScore === null ? 'Not Evaluated' : selectedEvent.riskScore}</div></div>
-              </div>
-              
-              {riskAssessment && (
-                <div style={{ marginTop: '16px' }}>
-                  <strong className="text-muted">Factors:</strong>
-                  <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
-                    {riskAssessment.factors.map((f, i) => (
-                      <li key={i} style={{ marginBottom: '8px' }}>
-                        <strong>{f.label} ({f.points} pts):</strong> {f.description}
-                      </li>
-                    ))}
-                  </ul>
+            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Event Attributes Grid */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                gap: '14px',
+                padding: '16px',
+                backgroundColor: 'var(--bg-primary)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)'
+              }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Type</span>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem', marginTop: '2px', fontFamily: 'var(--font-mono, monospace)' }}>{selectedEvent.eventType}</div>
                 </div>
-              )}
-            </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>User Identity</span>
+                  <div style={{ fontSize: '0.9rem', marginTop: '2px' }}>{selectedEvent.userIdentifier}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Application ID</span>
+                  <div style={{ fontSize: '0.85rem', marginTop: '2px', fontFamily: 'var(--font-mono, monospace)' }}>{selectedEvent.applicationId}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Status</span>
+                  <div style={{ marginTop: '2px' }}><StatusBadge status={selectedEvent.status} /></div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>IP & Location</span>
+                  <div style={{ fontSize: '0.85rem', marginTop: '2px' }}>{selectedEvent.ipAddress} {selectedEvent.location ? `(${selectedEvent.location})` : ''}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Host Device</span>
+                  <div style={{ fontSize: '0.85rem', marginTop: '2px' }}>{selectedEvent.device || 'Unspecified'}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Occurred At</span>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{new Date(selectedEvent.occurredAt).toLocaleString()}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Received At</span>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{new Date(selectedEvent.receivedAt).toLocaleString()}</div>
+                </div>
+              </div>
 
-            <div>
-              <strong className="text-muted">Metadata:</strong>
-              <pre style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: '6px', overflowX: 'auto', marginTop: '8px' }}>
-                {JSON.stringify(selectedEvent.metadata, null, 2)}
-              </pre>
+              {/* Risk Assessment Block */}
+              <div style={{ 
+                background: 'var(--bg-primary)', 
+                padding: '16px', 
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <AlertCircle size={15} style={{ color: 'var(--brand-color)' }} />
+                    Explainable Risk Analysis
+                  </h4>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <SeverityBadge severity={selectedEvent.severity} />
+                    <span style={{ 
+                      fontSize: '0.85rem', 
+                      fontWeight: 700, 
+                      padding: '2px 8px', 
+                      borderRadius: 'var(--radius-sm)', 
+                      backgroundColor: 'var(--hover-color)',
+                      fontFamily: 'var(--font-mono, monospace)' 
+                    }}>
+                      Score: {selectedEvent.riskScore !== null && selectedEvent.riskScore !== undefined ? selectedEvent.riskScore : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                
+                {riskAssessment && riskAssessment.factors && (
+                  <div style={{ marginTop: '14px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      Triggered Risk Factors:
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                      {riskAssessment.factors.map((f, i) => (
+                        <div 
+                          key={i} 
+                          style={{ 
+                            padding: '10px 12px', 
+                            borderRadius: 'var(--radius-sm)', 
+                            backgroundColor: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-color)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '12px'
+                          }}
+                        >
+                          <div>
+                            <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{f.label}</strong>
+                            <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{f.description}</p>
+                          </div>
+                          <span style={{ 
+                            padding: '2px 8px', 
+                            borderRadius: 'var(--radius-full)', 
+                            backgroundColor: 'var(--status-critical-bg)', 
+                            color: 'var(--status-critical)', 
+                            fontWeight: 700, 
+                            fontSize: '0.75rem',
+                            flexShrink: 0
+                          }}>
+                            +{f.points} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Raw Telemetry Metadata */}
+              <div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Raw Payload Metadata:
+                </span>
+                <pre style={{ 
+                  background: 'var(--bg-primary)', 
+                  padding: '14px', 
+                  borderRadius: 'var(--radius-md)', 
+                  overflowX: 'auto', 
+                  marginTop: '6px',
+                  border: '1px solid var(--border-color)',
+                  fontSize: '0.775rem',
+                  lineHeight: 1.4,
+                  color: 'var(--text-secondary)'
+                }}>
+                  {JSON.stringify(selectedEvent.metadata || {}, null, 2)}
+                </pre>
+              </div>
             </div>
           </div>
         </div>

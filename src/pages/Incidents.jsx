@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { getIncidents, getIncidentById, updateIncidentStatus, getIncidentTimeline } from '../services/incidentService';
 import { getRiskAssessment } from '../services/riskService';
-import { Search, Loader, X, Activity } from 'lucide-react';
+import { Search, X, Activity, ShieldAlert, Clock, User, Layers, FileText, CheckCircle2 } from 'lucide-react';
+import Spinner from '../components/ui/Spinner';
+import StatusBadge from '../components/ui/StatusBadge';
+import EmptyState from '../components/ui/EmptyState';
+import ErrorState from '../components/ui/ErrorState';
+
+const SeverityBadge = ({ severity }) => {
+  const sevKey = (severity || 'neutral').toLowerCase();
+  return <span className={`badge badge-${sevKey}`}>{severity || 'UNKNOWN'}</span>;
+};
 
 const Incidents = () => {
   const [incidents, setIncidents] = useState([]);
@@ -12,20 +21,20 @@ const Incidents = () => {
   const [riskAssessment, setRiskAssessment] = useState(null);
   const [timeline, setTimeline] = useState([]);
 
-  useEffect(() => {
-    const fetchIncidents = async () => {
-      setLoading(true);
-      try {
-        const res = await getIncidents(filters);
-        if (res.success) setIncidents(res.data);
-        else setError('Failed to load incidents');
-      } catch (err) {
-        setError('An error occurred');
-        console.error(err);
-      }
-      setLoading(false);
-    };
+  const fetchIncidents = async () => {
+    setLoading(true);
+    try {
+      const res = await getIncidents(filters);
+      if (res.success) setIncidents(res.data);
+      else setError('Failed to load incidents');
+    } catch (err) {
+      setError('An error occurred');
+      console.error(err);
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchIncidents();
   }, [filters]);
 
@@ -74,28 +83,53 @@ const Incidents = () => {
   };
 
   return (
-    <div className="page-wrapper" style={{ padding: '20px' }}>
-      <div className="page-header" style={{ marginBottom: '20px' }}>
-        <h1 className="page-title">Incident Management</h1>
-        <p className="page-subtitle text-muted">Track, investigate, and resolve security incidents.</p>
+    <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 className="page-title">Incident Management</h1>
+          <p className="page-subtitle">Triage, investigate, collaborate, and execute resolution playbooks</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-critical)' }}></span>
+          <span>{incidents.length} active incidents</span>
+        </div>
       </div>
 
-      <div className="card" style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-        <div className="table-toolbar" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <div className="search-bar" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', flex: 1 }}>
-            <Search size={18} className="text-muted" style={{ marginRight: '8px' }} />
+      <div className="card">
+        {/* Table Toolbar */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            background: 'var(--bg-primary)', 
+            padding: '8px 14px', 
+            borderRadius: 'var(--radius-md)', 
+            border: '1px solid var(--border-color)', 
+            flex: 1,
+            minWidth: '240px'
+          }}>
+            <Search size={16} className="text-muted" style={{ marginRight: '10px', flexShrink: 0 }} />
             <input 
               type="text" 
-              placeholder="Search by title..." 
+              placeholder="Search by incident title..." 
               value={filters.searchTerm}
               onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%' }}
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                color: 'var(--text-primary)', 
+                outline: 'none', 
+                width: '100%',
+                fontSize: '0.875rem'
+              }}
             />
           </div>
+
           <select 
             value={filters.severity} 
             onChange={(e) => setFilters({...filters, severity: e.target.value})}
-            style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+            className="form-control"
+            style={{ width: '160px' }}
           >
             <option value="ALL">All Severities</option>
             <option value="CRITICAL">Critical</option>
@@ -103,10 +137,12 @@ const Incidents = () => {
             <option value="MEDIUM">Medium</option>
             <option value="LOW">Low</option>
           </select>
+
           <select 
             value={filters.status} 
             onChange={(e) => setFilters({...filters, status: e.target.value})}
-            style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+            className="form-control"
+            style={{ width: '160px' }}
           >
             <option value="ALL">All Statuses</option>
             <option value="OPEN">Open</option>
@@ -118,33 +154,65 @@ const Incidents = () => {
         </div>
         
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><Loader className="spin" /></div>
+          <Spinner message="Loading incident database..." />
         ) : error ? (
-          <div style={{ color: 'var(--status-critical)', padding: '20px', textAlign: 'center' }}>{error}</div>
+          <ErrorState message={error} onRetry={() => setFilters({ ...filters })} />
         ) : incidents.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No incidents found.</div>
+          <EmptyState 
+            title="No incidents found" 
+            message="No security incidents match the current query." 
+          />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <th style={{ padding: '12px' }}>Title</th>
-                  <th style={{ padding: '12px' }}>Severity</th>
-                  <th style={{ padding: '12px' }}>Risk Score</th>
-                  <th style={{ padding: '12px' }}>Status</th>
-                  <th style={{ padding: '12px' }}>Created At</th>
-                  <th style={{ padding: '12px' }}>Assigned To</th>
+                <tr>
+                  <th>Title</th>
+                  <th>Severity</th>
+                  <th>Risk Score</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                  <th>Assigned Responder</th>
                 </tr>
               </thead>
               <tbody>
                 {incidents.map(incident => (
-                  <tr key={incident.id} onClick={() => handleSelectIncident(incident)} style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.2s' }} className="hover-row">
-                    <td style={{ padding: '12px' }}><strong>{incident.title}</strong></td>
-                    <td style={{ padding: '12px' }}><span style={{ color: 'var(--status-' + incident.severity?.toLowerCase() + ')' }}>{incident.severity}</span></td>
-                    <td style={{ padding: '12px' }}>{incident.riskScore === null ? 'N/A' : incident.riskScore}</td>
-                    <td style={{ padding: '12px' }}>{incident.status}</td>
-                    <td style={{ padding: '12px' }}>{new Date(incident.createdAt).toLocaleString()}</td>
-                    <td style={{ padding: '12px' }}>{incident.assignedToUserId || 'Unassigned'}</td>
+                  <tr 
+                    key={incident.id} 
+                    onClick={() => handleSelectIncident(incident)} 
+                    className="hover-row"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ShieldAlert size={15} style={{ color: incident.severity === 'CRITICAL' ? 'var(--status-critical)' : 'var(--brand-color)', flexShrink: 0 }} />
+                        <strong style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                          {incident.title}
+                        </strong>
+                      </div>
+                    </td>
+                    <td><SeverityBadge severity={incident.severity} /></td>
+                    <td>
+                      <span style={{ 
+                        fontFamily: 'var(--font-mono, monospace)', 
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        color: incident.riskScore >= 70 ? 'var(--status-critical)' : 'var(--text-primary)' 
+                      }}>
+                        {incident.riskScore === null || incident.riskScore === undefined ? 'N/A' : incident.riskScore}
+                      </span>
+                    </td>
+                    <td><StatusBadge status={incident.status} /></td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      <Clock size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+                      {new Date(incident.createdAt).toLocaleString()}
+                    </td>
+                    <td style={{ fontSize: '0.825rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <User size={13} style={{ color: 'var(--text-muted)' }} />
+                        <span>{incident.assignedToUserId || 'Unassigned'}</span>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -153,26 +221,71 @@ const Incidents = () => {
         )}
       </div>
 
-      {/* Details Modal */}
+      {/* Modern Incident Investigation Studio Modal */}
       {selectedIncident && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', width: '95%', maxWidth: '1000px', height: '90vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--border-color)' }}>
-            
-            <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>{selectedIncident.title}</h2>
-              <button onClick={() => setSelectedIncident(null)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={24} /></button>
+        <div className="modal-overlay" onClick={() => setSelectedIncident(null)}>
+          <div 
+            className="modal-dialog" 
+            style={{ width: '96%', maxWidth: '1100px', height: '90vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ 
+              padding: '18px 24px', 
+              borderBottom: '1px solid var(--border-color)', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              backgroundColor: 'var(--bg-primary)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--status-critical-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--status-critical)' }}>
+                  <ShieldAlert size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{selectedIncident.title}</h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    INCIDENT ID: {selectedIncident.id}
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedIncident(null)} 
+                className="icon-btn"
+                style={{ width: '32px', height: '32px' }}
+                aria-label="Close incident modal"
+              >
+                <X size={18} />
+              </button>
             </div>
             
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-              {/* Left Column: Details & Risk */}
-              <div style={{ flex: 2, padding: '20px', overflowY: 'auto', borderRight: '1px solid var(--border-color)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                  <div>
-                    <strong className="text-muted">Status:</strong>
+            {/* Body: Split View */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', flexWrap: 'wrap' }}>
+              
+              {/* Left Column: Details, Risk & Entities */}
+              <div style={{ flex: '1 1 560px', padding: '24px', overflowY: 'auto', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                
+                {/* Status Bar */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  padding: '14px 18px', 
+                  backgroundColor: 'var(--bg-primary)', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: '1px solid var(--border-color)',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      Lifecycle Status:
+                    </span>
                     <select 
                       value={selectedIncident.status}
                       onChange={(e) => handleStatusChange(e.target.value)}
-                      style={{ marginLeft: '10px', background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+                      className="form-control"
+                      style={{ fontWeight: 600, padding: '6px 12px' }}
                     >
                       <option value="OPEN">Open</option>
                       <option value="INVESTIGATING">Investigating</option>
@@ -181,97 +294,191 @@ const Incidents = () => {
                       <option value="FALSE_POSITIVE">False Positive</option>
                     </select>
                   </div>
-                  <div><strong className="text-muted">Assigned To:</strong> {selectedIncident.assignedToUserId || 'Unassigned'}</div>
+                  
+                  <div style={{ fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Assigned: </span>
+                    <strong>{selectedIncident.assignedToUserId || 'Unassigned'}</strong>
+                  </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-                  <div><strong className="text-muted">ID:</strong> <div style={{ fontSize: '0.9rem' }}>{selectedIncident.id}</div></div>
-                  <div><strong className="text-muted">App ID:</strong> <div style={{ fontSize: '0.9rem' }}>{selectedIncident.applicationId}</div></div>
-                  <div><strong className="text-muted">Created:</strong> <div>{new Date(selectedIncident.createdAt).toLocaleString()}</div></div>
-                  <div><strong className="text-muted">Updated:</strong> <div>{new Date(selectedIncident.updatedAt).toLocaleString()}</div></div>
+                {/* Attributes Grid */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+                  gap: '14px',
+                  padding: '16px',
+                  backgroundColor: 'var(--bg-primary)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-color)'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Application Scope</span>
+                    <div style={{ fontSize: '0.85rem', marginTop: '2px', fontFamily: 'var(--font-mono, monospace)' }}>{selectedIncident.applicationId}</div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Severity Assessment</span>
+                    <div style={{ marginTop: '2px' }}><SeverityBadge severity={selectedIncident.severity} /></div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Created Timestamp</span>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{new Date(selectedIncident.createdAt).toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Last Modified</span>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>{new Date(selectedIncident.updatedAt).toLocaleString()}</div>
+                  </div>
                 </div>
 
-                <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
-                  <h3>Risk Analysis</h3>
-                  <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
-                    <div><strong className="text-muted">Severity:</strong> <div><span style={{ color: 'var(--status-' + selectedIncident.severity?.toLowerCase() + ')' }}>{selectedIncident.severity}</span></div></div>
-                    <div><strong className="text-muted">Risk Score:</strong> <div>{selectedIncident.riskScore === null ? 'Not Evaluated' : selectedIncident.riskScore}</div></div>
+                {/* Risk Factors */}
+                <div style={{ 
+                  background: 'var(--bg-primary)', 
+                  padding: '16px', 
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-color)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Automated Risk Factors</h4>
+                    <span style={{ 
+                      fontSize: '0.85rem', 
+                      fontWeight: 700, 
+                      padding: '2px 8px', 
+                      borderRadius: 'var(--radius-sm)', 
+                      backgroundColor: 'var(--hover-color)',
+                      fontFamily: 'var(--font-mono, monospace)' 
+                    }}>
+                      Composite Risk: {selectedIncident.riskScore === null || selectedIncident.riskScore === undefined ? 'Not Evaluated' : selectedIncident.riskScore}
+                    </span>
                   </div>
                   
-                  {riskAssessment && (
-                    <div style={{ marginTop: '16px' }}>
-                      <strong className="text-muted">Factors:</strong>
-                      <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
-                        {riskAssessment.factors.map((f, i) => (
-                          <li key={i} style={{ marginBottom: '8px' }}>
-                            <strong>{f.label} ({f.points} pts)</strong> [<code>{f.code}</code>]<br />
-                            <span className="text-muted">{f.description}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="text-muted" style={{ marginTop: '10px', fontSize: '0.85rem' }}>Evaluated At: {new Date(riskAssessment.evaluatedAt).toLocaleString()}</div>
+                  {riskAssessment && riskAssessment.factors && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {riskAssessment.factors.map((f, i) => (
+                        <div key={i} style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <strong style={{ fontSize: '0.85rem' }}>{f.label}</strong>
+                            <span style={{ padding: '2px 6px', borderRadius: 'var(--radius-full)', background: 'var(--status-critical-bg)', color: 'var(--status-critical)', fontSize: '0.7rem', fontWeight: 700 }}>
+                              +{f.points} pts
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
+                            <code style={{ fontSize: '0.75rem', color: 'var(--brand-color)' }}>{f.code}</code>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>• {f.description}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  )}
+                  {(!riskAssessment || !riskAssessment.factors || riskAssessment.factors.length === 0) && (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0' }}>No risk breakdown factors available.</p>
                   )}
                 </div>
 
-                <div style={{ marginBottom: '20px' }}>
-                  <h3>Related Entities</h3>
-                  <div style={{ marginTop: '10px' }}>
-                    <strong className="text-muted">Threats ({selectedIncident.relatedThreatIds?.length || 0})</strong>
-                    {selectedIncident.resolvedThreats?.map(t => (
-                      <div key={t.id} style={{ padding: '8px', background: 'var(--bg-primary)', borderRadius: '4px', margin: '4px 0', fontSize: '0.9rem' }}>
-                        {t.type} - {t.severity}
+                {/* Related Entities */}
+                <div>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Layers size={15} style={{ color: 'var(--brand-color)' }} />
+                    Correlated Entities
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ padding: '12px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Threats ({selectedIncident.relatedThreatIds?.length || 0})
+                      </strong>
+                      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {selectedIncident.resolvedThreats?.map(t => (
+                          <div key={t.id} style={{ padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', fontSize: '0.825rem', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>{t.type}</span>
+                            <SeverityBadge severity={t.severity} />
+                          </div>
+                        ))}
+                        {(!selectedIncident.resolvedThreats || selectedIncident.resolvedThreats.length === 0) && (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No threat details linked</span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: '10px' }}>
-                    <strong className="text-muted">Events ({selectedIncident.relatedEventIds?.length || 0})</strong>
-                    {selectedIncident.resolvedEvents?.map(e => (
-                      <div key={e.id} style={{ padding: '8px', background: 'var(--bg-primary)', borderRadius: '4px', margin: '4px 0', fontSize: '0.9rem' }}>
-                        {e.eventType} - {e.userIdentifier}
+                    </div>
+
+                    <div style={{ padding: '12px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Security Events ({selectedIncident.relatedEventIds?.length || 0})
+                      </strong>
+                      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {selectedIncident.resolvedEvents?.map(e => (
+                          <div key={e.id} style={{ padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', fontSize: '0.825rem' }}>
+                            <div style={{ fontWeight: 600 }}>{e.eventType}</div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{e.userIdentifier}</div>
+                          </div>
+                        ))}
+                        {(!selectedIncident.resolvedEvents || selectedIncident.resolvedEvents.length === 0) && (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No event details linked</span>
+                        )}
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '20px' }}>
-                  <h3>Resolution</h3>
-                  <div style={{ padding: '12px', background: 'var(--bg-primary)', borderRadius: '4px', marginTop: '8px' }}>
-                    {selectedIncident.resolution ? selectedIncident.resolution : <span className="text-muted">No resolution recorded.</span>}
+                {/* Resolution Note */}
+                <div style={{ background: 'var(--bg-primary)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <h4 style={{ margin: '0 0 6px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={14} style={{ color: 'var(--status-success)' }} />
+                    Resolution Summary
+                  </h4>
+                  <div style={{ fontSize: '0.85rem', color: selectedIncident.resolution ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                    {selectedIncident.resolution || 'No formal resolution recorded yet.'}
                   </div>
                 </div>
 
               </div>
 
               {/* Right Column: Timeline & Notes */}
-              <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', background: 'var(--bg-canvas)' }}>
-                <h3 style={{ marginBottom: '16px' }}><Activity size={18} style={{ display: 'inline', verticalAlign: 'text-bottom' }} /> Timeline</h3>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {timeline.map(t => (
-                    <div key={t.id} style={{ marginBottom: '16px', position: 'relative', paddingLeft: '20px', borderLeft: '2px solid var(--brand-color)' }}>
-                      <div style={{ position: 'absolute', left: '-6px', top: 0, width: '10px', height: '10px', borderRadius: '50%', background: 'var(--brand-color)' }}></div>
-                      <div style={{ fontSize: '0.85rem' }} className="text-muted">{new Date(t.occurredAt).toLocaleString()}</div>
-                      <div style={{ fontWeight: '500' }}>{t.type}</div>
-                      <div style={{ fontSize: '0.9rem' }}>{t.description}</div>
-                      <div style={{ fontSize: '0.8rem' }} className="text-muted">By: {t.actorName} ({t.actorType})</div>
-                    </div>
-                  ))}
-                  {timeline.length === 0 && <div className="text-muted">No timeline events.</div>}
+              <div style={{ flex: '1 1 360px', padding: '24px', display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', gap: '20px' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 16px', fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Activity size={16} style={{ color: 'var(--brand-color)' }} /> 
+                    Investigation Timeline
+                  </h4>
+                  <div style={{ maxHeight: '280px', overflowY: 'auto', paddingRight: '6px' }}>
+                    {timeline.map(t => (
+                      <div key={t.id} style={{ marginBottom: '16px', position: 'relative', paddingLeft: '20px', borderLeft: '2px solid var(--brand-color)' }}>
+                        <div style={{ position: 'absolute', left: '-5px', top: '2px', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--brand-color)' }}></div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(t.occurredAt).toLocaleString()}</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '2px' }}>{t.type}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{t.description}</div>
+                        <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                          By: <span style={{ color: 'var(--text-primary)' }}>{t.actorName}</span> ({t.actorType})
+                        </div>
+                      </div>
+                    ))}
+                    {timeline.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        No timeline records found.
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <h3 style={{ marginTop: '20px', marginBottom: '16px' }}>Notes</h3>
-                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {selectedIncident.notes?.map(note => (
-                    <div key={note.id} style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: '6px', marginBottom: '10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.85rem' }}>
-                        <strong>{note.authorName}</strong>
-                        <span className="text-muted">{new Date(note.createdAt).toLocaleString()}</span>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <h4 style={{ margin: '0 0 12px', fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileText size={16} style={{ color: 'var(--brand-color)' }} />
+                    Case Notes
+                  </h4>
+                  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {selectedIncident.notes?.map(note => (
+                      <div key={note.id} style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.775rem' }}>
+                          <strong style={{ color: 'var(--brand-color)' }}>{note.authorName}</strong>
+                          <span className="text-muted">{new Date(note.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{note.note}</div>
                       </div>
-                      <div style={{ fontSize: '0.9rem' }}>{note.note}</div>
-                    </div>
-                  ))}
-                  {(!selectedIncident.notes || selectedIncident.notes.length === 0) && <div className="text-muted">No notes available.</div>}
+                    ))}
+                    {(!selectedIncident.notes || selectedIncident.notes.length === 0) && (
+                      <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        No case notes attached.
+                      </div>
+                    )}
+                  </div>
                 </div>
+
               </div>
             </div>
           </div>
